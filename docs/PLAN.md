@@ -296,7 +296,7 @@ Cleanup job (in-process ticker, nightly): delete expired/consumed `one_time_toke
 
 **Phase 4 — OIDC.** Generic provider adapter in `adapter/oidc` + `application/oauth`, Google config, state+PKCE+nonce, callback with linking rules, `GET /auth/{provider}/login|callback`. ✅ Linking rules covered by unit tests with a fake provider; handler state-cookie mechanics unit-tested. Manual E2E with a real Google OAuth client: **pending** (needs `GOOGLE_CLIENT_ID/SECRET` from Google Cloud Console). — **Status: code complete (2026-07-09); manual E2E pending**
 
-**Phase 5 — authkit + forged.** Build authkit here; wire forged middleware/interceptor in the forged repo, protect routes, use `sub` as user FK. ✅ forged rejects bad/expired tokens locally with no auth-service calls; dev mode works offline. — **Status: not started**
+**Phase 5 — authkit + forged.** Build authkit here; wire forged middleware/interceptor in the forged repo, protect routes, use `sub` as user FK. ✅ forged rejects bad/expired tokens locally with no auth-service calls; dev mode works offline. — **Status: authkit ✅ complete (2026-07-09) — verifier (cached JWKS, refresh-on-unknown-kid ≤1/5min, 30s leeway), HTTP middleware, `grpcauth` subpackage, offline dev mode (`authkit.DevPublicKeyB64` matches the checked-in dev keypair), full table-driven tests + live verification against a running keysmith. Forged wiring pending: push keysmith first, then `go get github.com/sriganeshlokesh/keysmith/pkg/authkit@main` in forged.**
 
 **Phase 6 — SPA (drafted repo).** AuthProvider, login/signup UI, silent refresh, protected routes. ✅ Full browser flow for all three methods; hard-refresh keeps session via cookie bootstrap. — **Status: not started**
 
