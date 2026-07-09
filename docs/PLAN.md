@@ -84,7 +84,7 @@ Application areas: `application/password` (Phase 3), `application/token` (Phase 
 - `pressly/goose/v3` for migrations (SQL files)
 - `coreos/go-oidc/v3` + `golang.org/x/oauth2` for Google/LinkedIn
 - `alexedwards/argon2id` for password hashing
-- `golang-jwt/jwt/v5` for signing (Ed25519); `lestrrat-go/jwx/v2` `jwk.Cache` in authkit for JWKS fetching
+- `golang-jwt/jwt/v5` for signing (Ed25519); `lestrrat-go/jwx/v3` `jwk.Cache` in authkit for JWKS fetching (v2 is deprecated upstream)
 - `resend/resend-go` for email
 - `golang.org/x/time/rate` for in-memory rate limiting (v1; Redis-backed later if multi-instance)
 - Local email testing: mailpit container (SMTP catch-all UI) OR Resend test mode
@@ -290,7 +290,7 @@ Cleanup job (in-process ticker, nightly): delete expired/consumed `one_time_toke
 
 **Phase 1 — Schema + store layer.** Migration 0001; entities in `domain/model`, ports in `domain/repo`, pgx repositories in `adapter/repository/postgres` with integration tests against compose Postgres (`make test-integration`; CI runs them via a postgres service container). ✅ CRUD tests pass; goose up/down idempotent. — **Status: ✅ complete (2026-07-09)**
 
-**Phase 2 — Token core.** Ed25519 keys from env, mint/verify, JWKS endpoint, refresh issue/rotate/reuse-detect (`domain/service` rules + `application/token`), cleanup job. ✅ Unit tests incl. reuse → family revoked; JWKS parses with jwx. — **Status: not started**
+**Phase 2 — Token core.** Ed25519 keys from env, mint/verify, JWKS endpoint, refresh issue/rotate/reuse-detect (`domain/service` signer + `application/token`), nightly cleanup job (`adapter/job`). ✅ Unit tests incl. reuse → family revoked; JWKS parses with jwx. — **Status: ✅ complete (2026-07-09)**
 
 **Phase 3 — Password auth.** signup/login/verify/reset endpoints (`application/password`, handlers in `api/http/handle`), argon2id, Resend client in `adapter/email` (mailpit in dev), rate limits (per-IP: 10/min login, 3/min signup & reset). ✅ Full flow test: signup → verify email link → login → refresh → me → logout. Password reset revokes all sessions. No user enumeration (identical responses/timing on unknown email). — **Status: not started**
 

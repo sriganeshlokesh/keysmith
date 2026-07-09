@@ -1,4 +1,5 @@
-// Package service holds domain services: business rules that span entities,
-// such as refresh-token rotation and reuse detection (master plan §5).
-// Services arrive with the token core in Phase 2.
+// Package service holds domain services: business rules that need no I/O,
+// such as access-token minting/verification and JWKS construction
+// (master plan §5). Rules that orchestrate repositories (rotation, reuse
+// detection) live in the application layer instead.
 package service

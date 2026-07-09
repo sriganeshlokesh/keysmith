@@ -37,12 +37,15 @@ func main() {
 		}
 	}
 
-	server, cleanup, err := dependency.InitializeServer(ctx, cfg, logger)
+	app, cleanup, err := dependency.InitializeApp(ctx, cfg, logger)
 	if err != nil {
-		logger.Error("failed to initialize server", "error", err)
+		logger.Error("failed to initialize app", "error", err)
 		os.Exit(1)
 	}
 	defer cleanup()
+
+	server := app.Server
+	app.CleanupJob.Start(ctx)
 
 	errCh := make(chan error, 1)
 	go func() {
