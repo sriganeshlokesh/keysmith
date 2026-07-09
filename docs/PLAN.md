@@ -288,7 +288,7 @@ Cleanup job (in-process ticker, nightly): delete expired/consumed `one_time_toke
 
 **Phase 0 — Scaffolding.** Hexagonal skeleton (mirroring forged), go.work, docker-compose (postgres + mailpit), Makefile (`dev`, `test`, `lint`, `wire`, `migrate-up/down`), Wire composition root, CI (build/vet/wire-staleness/test + golangci-lint). ✅ `make dev` boots keysmith against local Postgres; `/healthz` returns 200. — **Status: ✅ complete (2026-07-09)**
 
-**Phase 1 — Schema + store layer.** Migration 0001; entities in `domain/model`, ports in `domain/repo`, pgx repositories in `adapter/repository/postgres` with integration tests against compose Postgres. ✅ CRUD tests pass; goose up/down idempotent. — **Status: not started**
+**Phase 1 — Schema + store layer.** Migration 0001; entities in `domain/model`, ports in `domain/repo`, pgx repositories in `adapter/repository/postgres` with integration tests against compose Postgres (`make test-integration`; CI runs them via a postgres service container). ✅ CRUD tests pass; goose up/down idempotent. — **Status: ✅ complete (2026-07-09)**
 
 **Phase 2 — Token core.** Ed25519 keys from env, mint/verify, JWKS endpoint, refresh issue/rotate/reuse-detect (`domain/service` rules + `application/token`), cleanup job. ✅ Unit tests incl. reuse → family revoked; JWKS parses with jwx. — **Status: not started**
 

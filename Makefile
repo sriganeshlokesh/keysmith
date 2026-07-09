@@ -1,8 +1,10 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 DATABASE_URL ?= postgres://keysmith:keysmith@localhost:5433/keysmith?sslmode=disable
-GOOSE := go run github.com/pressly/goose/v3/cmd/goose@latest
+# Run the goose CLI in module isolation (a `go tool` install would drag its
+# many DB drivers into our module graph). Keep the version in sync with go.mod.
+GOOSE := go run github.com/pressly/goose/v3/cmd/goose@v3.27.2
 
-.PHONY: all fmt lint test build run dev wire tidy db-up db-down migrate-up migrate-down
+.PHONY: all fmt lint test test-integration build run dev wire tidy db-up db-down migrate-up migrate-down
 
 all: fmt lint test build
 
@@ -18,8 +20,13 @@ lint:
 	cd pkg/authkit && golangci-lint run ./...
 
 # go.work does not span ./... across modules, so run each module explicitly.
+# Integration tests are skipped unless TEST_DATABASE_URL is set — see test-integration.
 test:
 	go test -race -coverprofile=coverage.out ./...
+	cd pkg/authkit && go test -race ./...
+
+test-integration: db-up
+	TEST_DATABASE_URL="$(DATABASE_URL)" go test -race -coverprofile=coverage.out ./...
 	cd pkg/authkit && go test -race ./...
 
 build:

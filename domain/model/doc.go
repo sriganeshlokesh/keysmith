@@ -1,5 +1,3 @@
-// Package model holds keysmith's domain entities: User, Identity,
-// PasswordCredential, RefreshToken, and OneTimeToken (master plan §4).
-// Entities arrive with the schema and store layer in Phase 1.
+// Package model holds keysmith's domain entities (master plan §4).
 // This package must stay free of transport and persistence concerns.
 package model

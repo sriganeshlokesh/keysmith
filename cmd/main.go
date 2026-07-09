@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sriganeshlokesh/keysmith/adapter/dependency"
+	"github.com/sriganeshlokesh/keysmith/adapter/repository/postgres"
 	"github.com/sriganeshlokesh/keysmith/config"
 	applog "github.com/sriganeshlokesh/keysmith/util/log"
 )
@@ -26,6 +27,15 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Config guarantees AutoMigrate is only true when ENV=local (plan §3.8).
+	if cfg.AutoMigrate {
+		logger.Info("applying migrations", slog.String("reason", "AUTO_MIGRATE=true"))
+		if err := postgres.Migrate(ctx, cfg.DatabaseURL); err != nil {
+			logger.Error("migrations failed", "error", err)
+			os.Exit(1)
+		}
+	}
 
 	server, cleanup, err := dependency.InitializeServer(ctx, cfg, logger)
 	if err != nil {
