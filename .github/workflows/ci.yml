@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Build, Vet, Wire-Staleness, Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: |
+          go build ./...
+          cd pkg/authkit && go build ./...
+
+      - name: Vet
+        run: |
+          go vet ./...
+          cd pkg/authkit && go vet ./...
+
+      - name: Wire staleness check
+        run: |
+          go tool wire ./adapter/dependency/
+          git diff --exit-code -- adapter/dependency/wire_gen.go
+
+      - name: Test
+        run: |
+          go test -race -cover ./...
+          cd pkg/authkit && go test -race ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
