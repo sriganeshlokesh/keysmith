@@ -4,7 +4,7 @@ DATABASE_URL ?= postgres://keysmith:keysmith@localhost:5433/keysmith?sslmode=dis
 # many DB drivers into our module graph). Keep the version in sync with go.mod.
 GOOSE := go run github.com/pressly/goose/v3/cmd/goose@v3.27.2
 
-.PHONY: all fmt lint test test-integration build run dev wire tidy db-up db-down migrate-up migrate-down
+.PHONY: all fmt lint test test-integration build run dev wire tidy db-up db-down migrate-up migrate-down docker-build
 
 all: fmt lint test build
 
@@ -48,6 +48,9 @@ dev: db-up
 
 wire:
 	go tool wire ./adapter/dependency/
+
+docker-build:
+	docker build --build-arg VERSION=$(VERSION) -t keysmith:local .
 
 tidy:
 	go mod tidy

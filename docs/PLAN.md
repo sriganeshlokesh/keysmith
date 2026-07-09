@@ -106,7 +106,7 @@ Application areas: `application/password` (Phase 3), `application/token` (Phase 
 
 ### 3.2 Wire the auth service to the DB
 
-1. Deploy the auth service in the same project (New → GitHub Repo → select `keysmith`; repo root is the service root).
+1. Deploy the auth service in the same project (New → GitHub Repo → select `keysmith`; repo root is the service root). The build uses the repo `Dockerfile` (pinned via `railway.toml`, mirroring forged) — Railpack's Go autodetection fails on the `cmd/` layout.
 2. In the keysmith service → Variables, add a **reference variable** instead of pasting the string:
    ```
    DATABASE_URL=${{Postgres.DATABASE_URL}}

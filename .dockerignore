@@ -1,0 +1,12 @@
+.git
+.github/
+bin/
+coverage.out
+*.md
+docs/
+Makefile
+railway.toml
+.golangci.yml
+docker-compose.yml
+.env
+.env.example
