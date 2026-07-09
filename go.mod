@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/alexedwards/argon2id v1.0.0
+	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-chi/httprate v0.16.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -14,10 +15,12 @@ require (
 	github.com/pressly/goose/v3 v3.27.2
 	github.com/resend/resend-go/v2 v2.28.0
 	github.com/vgarvardt/pgx-google-uuid/v5 v5.6.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/subcommands v1.2.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

@@ -14,8 +14,8 @@
 | Area | Decision |
 |---|---|
 | Build approach | Roll our own auth service in Go (no Clerk/Auth0/Ory) |
-| Auth methods (v1) | Google OIDC, LinkedIn OIDC, email + password — all three in v1 |
-| OAuth flow | Authorization Code + PKCE for both providers |
+| Auth methods (v1) | Google OIDC + email/password. (LinkedIn was dropped 2026-07-09 — its dev setup needs a company page; schema/domain still permit re-adding it without a migration.) OAuth is optional at runtime: with no provider credentials configured, keysmith runs email/password-only and `/auth/{provider}/login` 404s |
+| OAuth flow | Authorization Code + PKCE |
 | Password hashing | argon2id |
 | Session model | 15-min access JWT (SPA holds in memory only) + rotating refresh token in httpOnly cookie |
 | Refresh security | Token families with reuse detection; hashed at rest (SHA-256) |
@@ -258,7 +258,7 @@ Cleanup job (in-process ticker, nightly): delete expired/consumed `one_time_toke
 | GET | `/.well-known/jwks.json` | public keys; Cache-Control: max-age=300 |
 | GET | `/healthz` | liveness + DB ping |
 
-**OAuth-per-provider config:** Google issuer `https://accounts.google.com`, scopes `openid email profile`. LinkedIn: OIDC ("Sign In with LinkedIn using OpenID Connect" product must be enabled on the LinkedIn app), scopes `openid profile email`. LinkedIn's OIDC discovery/ID-token behavior has quirks — verify discovery URL and whether `nonce` is honored during implementation; fall back to userinfo endpoint if ID token claims are thin.
+**OAuth provider config (v1 = Google only):** issuer `https://accounts.google.com`, scopes `openid email profile`, redirect URI `PUBLIC_BASE_URL/auth/google/callback`, nonce enforced, PKCE on. The `adapter/oidc` client is generic (per-provider `HonorNonce`/`UsePKCE` toggles + userinfo fallback for thin ID tokens), so re-adding LinkedIn later is one provider block in `adapter/dependency/providers.go` (issuer `https://www.linkedin.com/oauth`, scopes `openid profile email`, `HonorNonce: false`; try `UsePKCE: false` if its code exchange rejects PKCE).
 
 **Linking rules (callback):**
 1. Identity exists → login as that user.
@@ -294,7 +294,7 @@ Cleanup job (in-process ticker, nightly): delete expired/consumed `one_time_toke
 
 **Phase 3 — Password auth.** signup/login/verify/reset endpoints (`application/password`, handlers in `api/http/handle`), argon2id, Resend client in `adapter/email` (SMTP→mailpit in dev), refresh/logout/me over HTTP with the rotating cookie, rate limits (per-IP: 10/min login, 3/min signup & reset). ✅ Full flow test: signup → verify email link → login → refresh → me → logout (e2e in `api/http/e2e_test.go`). Password reset revokes all sessions. No user enumeration (identical responses/timing on unknown email). Note: login requires a verified email (403 otherwise); production also requires `SPA_ORIGIN` + `RESEND_API_KEY`. — **Status: ✅ complete (2026-07-09)**
 
-**Phase 4 — OIDC.** Generic provider adapter in `adapter/oidc` + `application/oauth`, Google + LinkedIn configs, state+PKCE+nonce, callback with linking rules. ✅ Manual E2E with real Google/LinkedIn test apps; linking rules covered by unit tests with a fake provider. — **Status: not started**
+**Phase 4 — OIDC.** Generic provider adapter in `adapter/oidc` + `application/oauth`, Google config, state+PKCE+nonce, callback with linking rules, `GET /auth/{provider}/login|callback`. ✅ Linking rules covered by unit tests with a fake provider; handler state-cookie mechanics unit-tested. Manual E2E with a real Google OAuth client: **pending** (needs `GOOGLE_CLIENT_ID/SECRET` from Google Cloud Console). — **Status: code complete (2026-07-09); manual E2E pending**
 
 **Phase 5 — authkit + forged.** Build authkit here; wire forged middleware/interceptor in the forged repo, protect routes, use `sub` as user FK. ✅ forged rejects bad/expired tokens locally with no auth-service calls; dev mode works offline. — **Status: not started**
 
@@ -314,8 +314,7 @@ DATABASE_URL=
 PUBLIC_BASE_URL=https://auth.<domain>       # issuer + OAuth redirect base
 SPA_ORIGIN=https://app.<domain>
 AUTH_SIGNING_KEYS=                          # JSON [{"kid":"2026-07","private_key_b64":"..."}]
-GOOGLE_CLIENT_ID= / GOOGLE_CLIENT_SECRET=
-LINKEDIN_CLIENT_ID= / LINKEDIN_CLIENT_SECRET=
+GOOGLE_CLIENT_ID= / GOOGLE_CLIENT_SECRET=   # provider registered only when both set
 RESEND_API_KEY=
 EMAIL_FROM=Drafted <no-reply@<domain>>
 ACCESS_TOKEN_TTL=15m

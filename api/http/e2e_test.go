@@ -24,6 +24,7 @@ import (
 	"github.com/sriganeshlokesh/keysmith/adapter/repository/postgres"
 	apihttp "github.com/sriganeshlokesh/keysmith/api/http"
 	"github.com/sriganeshlokesh/keysmith/api/http/handle"
+	"github.com/sriganeshlokesh/keysmith/application/oauth"
 	"github.com/sriganeshlokesh/keysmith/application/password"
 	"github.com/sriganeshlokesh/keysmith/application/token"
 	"github.com/sriganeshlokesh/keysmith/config"
@@ -119,6 +120,7 @@ func newEnv(t *testing.T) *env {
 
 	logger := slog.New(slog.DiscardHandler)
 	users := postgres.NewUserRepo(pool)
+	identities := postgres.NewIdentityRepo(pool)
 	creds := postgres.NewCredentialRepo(pool)
 	oneTime := postgres.NewOneTimeTokenRepo(pool)
 	refresh := postgres.NewRefreshTokenRepo(pool)
@@ -132,12 +134,14 @@ func newEnv(t *testing.T) *env {
 		t.Fatalf("password service: %v", err)
 	}
 
+	oauthSvc := oauth.NewService(nil, users, identities, logger)
 	router := apihttp.NewRouter(cfg, logger,
 		handle.NewHealthHandler(cfg, pool),
 		handle.NewJWKSHandler(signer),
 		handle.NewPasswordHandler(cfg, pwSvc, tokenSvc),
 		handle.NewSessionHandler(cfg, tokenSvc),
 		handle.NewMeHandler(users),
+		handle.NewOAuthHandler(cfg, oauthSvc, tokenSvc, logger),
 		signer,
 	)
 	ts := httptest.NewServer(router)

@@ -20,6 +20,7 @@ import (
 	apihttp "github.com/sriganeshlokesh/keysmith/api/http"
 	"github.com/sriganeshlokesh/keysmith/api/http/handle"
 	"github.com/sriganeshlokesh/keysmith/api/http/middleware"
+	"github.com/sriganeshlokesh/keysmith/application/oauth"
 	"github.com/sriganeshlokesh/keysmith/application/password"
 	"github.com/sriganeshlokesh/keysmith/application/token"
 	"github.com/sriganeshlokesh/keysmith/config"
@@ -32,6 +33,7 @@ import (
 var AppSet = wire.NewSet(
 	postgres.NewPool,
 	postgres.NewUserRepo,
+	postgres.NewIdentityRepo,
 	postgres.NewCredentialRepo,
 	postgres.NewRefreshTokenRepo,
 	postgres.NewOneTimeTokenRepo,
@@ -39,15 +41,18 @@ var AppSet = wire.NewSet(
 	ProvideTokenConfig,
 	ProvidePasswordConfig,
 	ProvideEmailSender,
+	ProvideOAuthProviders,
 	token.NewService,
 	token.NewCleaner,
 	password.NewService,
+	oauth.NewService,
 	job.NewCleanup,
 	handle.NewHealthHandler,
 	handle.NewJWKSHandler,
 	handle.NewPasswordHandler,
 	handle.NewSessionHandler,
 	handle.NewMeHandler,
+	handle.NewOAuthHandler,
 	apihttp.NewRouter,
 	apihttp.NewServer,
 	NewApp,
@@ -56,6 +61,7 @@ var AppSet = wire.NewSet(
 	wire.Bind(new(handle.PasswordService), new(*password.Service)),
 	wire.Bind(new(handle.SessionIssuer), new(*token.Service)),
 	wire.Bind(new(handle.SessionService), new(*token.Service)),
+	wire.Bind(new(handle.OAuthService), new(*oauth.Service)),
 	wire.Bind(new(handle.UserGetter), new(*postgres.UserRepo)),
 	wire.Bind(new(middleware.TokenVerifier), new(*service.Signer)),
 	wire.Bind(new(apihttp.HealthRoutes), new(*handle.HealthHandler)),
@@ -63,7 +69,9 @@ var AppSet = wire.NewSet(
 	wire.Bind(new(apihttp.PasswordRoutes), new(*handle.PasswordHandler)),
 	wire.Bind(new(apihttp.SessionRoutes), new(*handle.SessionHandler)),
 	wire.Bind(new(apihttp.MeRoutes), new(*handle.MeHandler)),
+	wire.Bind(new(apihttp.OAuthRoutes), new(*handle.OAuthHandler)),
 	wire.Bind(new(repo.Users), new(*postgres.UserRepo)),
+	wire.Bind(new(repo.Identities), new(*postgres.IdentityRepo)),
 	wire.Bind(new(repo.PasswordCredentials), new(*postgres.CredentialRepo)),
 	wire.Bind(new(repo.RefreshTokens), new(*postgres.RefreshTokenRepo)),
 	wire.Bind(new(repo.OneTimeTokens), new(*postgres.OneTimeTokenRepo)),

@@ -1,14 +1,20 @@
 package dependency
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
+	gooidc "github.com/coreos/go-oidc/v3/oidc"
+
 	emailresend "github.com/sriganeshlokesh/keysmith/adapter/email/resend"
 	emailsmtp "github.com/sriganeshlokesh/keysmith/adapter/email/smtp"
+	"github.com/sriganeshlokesh/keysmith/adapter/oidc"
+	"github.com/sriganeshlokesh/keysmith/application/oauth"
 	"github.com/sriganeshlokesh/keysmith/application/password"
 	"github.com/sriganeshlokesh/keysmith/application/token"
 	"github.com/sriganeshlokesh/keysmith/config"
+	"github.com/sriganeshlokesh/keysmith/domain/model"
 	"github.com/sriganeshlokesh/keysmith/domain/service"
 )
 
@@ -42,6 +48,37 @@ func ProvideTokenConfig(cfg *config.Config) token.Config {
 // ProvidePasswordConfig maps app config onto the password service parameters.
 func ProvidePasswordConfig(cfg *config.Config) password.Config {
 	return password.Config{SPAOrigin: cfg.SPAOrigin}
+}
+
+// ProvideOAuthProviders runs OIDC discovery for every provider whose client
+// credentials are configured. Providers without credentials are skipped, so
+// local dev and email/password-only deployments work without OAuth apps;
+// discovery failures for configured providers fail startup. v1 ships Google
+// only.
+func ProvideOAuthProviders(ctx context.Context, cfg *config.Config, logger *slog.Logger) (map[model.Provider]oauth.IdentityProvider, error) {
+	providers := make(map[model.Provider]oauth.IdentityProvider)
+
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		client, err := oidc.New(ctx, oidc.Options{
+			Name:         model.ProviderGoogle,
+			Issuer:       "https://accounts.google.com",
+			ClientID:     cfg.GoogleClientID,
+			ClientSecret: cfg.GoogleClientSecret,
+			RedirectURL:  cfg.PublicBaseURL + "/auth/google/callback",
+			Scopes:       []string{gooidc.ScopeOpenID, "email", "profile"},
+			HonorNonce:   true,
+			UsePKCE:      true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		providers[model.ProviderGoogle] = client
+	}
+
+	if len(providers) == 0 {
+		logger.Warn("no OAuth providers configured — /auth/{provider}/login will 404")
+	}
+	return providers, nil
 }
 
 // ProvideEmailSender selects the email transport at startup: Resend when an

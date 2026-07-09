@@ -52,6 +52,14 @@ type Config struct {
 	ResendAPIKey string
 	EmailFrom    string
 	SMTPAddr     string
+
+	// OAuth client credentials. The provider is only registered when both
+	// values are set, so local dev — and an email/password-only deployment —
+	// works without an OAuth app configured. v1 ships Google only (LinkedIn
+	// was dropped 2026-07-09; the schema still permits re-adding it without
+	// a migration).
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
 // SigningKeyConfig is one entry of the AUTH_SIGNING_KEYS JSON array.
@@ -173,6 +181,9 @@ func Load() (*Config, error) {
 		ResendAPIKey:        os.Getenv("RESEND_API_KEY"),
 		EmailFrom:           getEnv("EMAIL_FROM", "Drafted <no-reply@drafted.local>"),
 		SMTPAddr:            getEnv("SMTP_ADDR", "localhost:1025"),
+
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 	}, nil
 }
 

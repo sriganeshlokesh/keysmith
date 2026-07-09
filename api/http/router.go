@@ -47,6 +47,13 @@ type MeRoutes interface {
 	Me(w http.ResponseWriter, r *http.Request)
 }
 
+// OAuthRoutes is what the router needs from the OAuth handler.
+// Satisfied implicitly by *handle.OAuthHandler.
+type OAuthRoutes interface {
+	Login(w http.ResponseWriter, r *http.Request)
+	Callback(w http.ResponseWriter, r *http.Request)
+}
+
 // Per-IP rate limits from the master plan (Phase 3): 10/min login,
 // 3/min signup & reset flows.
 const (
@@ -68,6 +75,7 @@ func NewRouter(
 	pw PasswordRoutes,
 	sessions SessionRoutes,
 	me MeRoutes,
+	oauthH OAuthRoutes,
 	verifier middleware.TokenVerifier,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -91,6 +99,10 @@ func NewRouter(
 		// Refresh/logout authenticate via the refresh cookie itself.
 		r.Post("/refresh", sessions.Refresh)
 		r.Post("/logout", sessions.Logout)
+
+		// OIDC: {provider} ∈ google, linkedin (master plan §6).
+		r.With(middleware.RateLimitPerIP(loginRPM)).Get("/{provider}/login", oauthH.Login)
+		r.Get("/{provider}/callback", oauthH.Callback)
 
 		r.With(middleware.RequireAuth(verifier, cfg.PublicBaseURL, token.Audience)).
 			Get("/me", me.Me)
