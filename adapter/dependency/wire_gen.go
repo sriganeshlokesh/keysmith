@@ -14,6 +14,8 @@ import (
 	"github.com/sriganeshlokesh/keysmith/adapter/repository/postgres"
 	"github.com/sriganeshlokesh/keysmith/api/http"
 	"github.com/sriganeshlokesh/keysmith/api/http/handle"
+	"github.com/sriganeshlokesh/keysmith/api/http/middleware"
+	"github.com/sriganeshlokesh/keysmith/application/password"
 	"github.com/sriganeshlokesh/keysmith/application/token"
 	"github.com/sriganeshlokesh/keysmith/config"
 	"github.com/sriganeshlokesh/keysmith/domain/repo"
@@ -38,10 +40,28 @@ func InitializeApp(ctx context.Context, cfg *config.Config, logger *slog.Logger)
 		return nil, nil, err
 	}
 	jwksHandler := handle.NewJWKSHandler(signer)
-	handler := http.NewRouter(cfg, logger, healthHandler, jwksHandler)
-	server := http.NewServer(cfg, handler, logger)
-	refreshTokenRepo := postgres.NewRefreshTokenRepo(pool)
+	userRepo := postgres.NewUserRepo(pool)
+	credentialRepo := postgres.NewCredentialRepo(pool)
 	oneTimeTokenRepo := postgres.NewOneTimeTokenRepo(pool)
+	refreshTokenRepo := postgres.NewRefreshTokenRepo(pool)
+	emailSender, err := ProvideEmailSender(cfg, logger)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	passwordConfig := ProvidePasswordConfig(cfg)
+	service, err := password.NewService(userRepo, credentialRepo, oneTimeTokenRepo, refreshTokenRepo, emailSender, passwordConfig, logger)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	tokenConfig := ProvideTokenConfig(cfg)
+	tokenService := token.NewService(signer, userRepo, refreshTokenRepo, tokenConfig, logger)
+	passwordHandler := handle.NewPasswordHandler(cfg, service, tokenService)
+	sessionHandler := handle.NewSessionHandler(cfg, tokenService)
+	meHandler := handle.NewMeHandler(userRepo)
+	handler := http.NewRouter(cfg, logger, healthHandler, jwksHandler, passwordHandler, sessionHandler, meHandler, signer)
+	server := http.NewServer(cfg, handler, logger)
 	cleaner := token.NewCleaner(refreshTokenRepo, oneTimeTokenRepo, logger)
 	jobCleanup := job.NewCleanup(cleaner, logger)
 	app := NewApp(server, jobCleanup)
@@ -54,4 +74,8 @@ func InitializeApp(ctx context.Context, cfg *config.Config, logger *slog.Logger)
 
 // AppSet groups the providers needed to build the App.
 // Consumer-declared interfaces are bound to their implementations here.
-var AppSet = wire.NewSet(postgres.NewPool, postgres.NewRefreshTokenRepo, postgres.NewOneTimeTokenRepo, ProvideSigner, token.NewCleaner, job.NewCleanup, handle.NewHealthHandler, handle.NewJWKSHandler, http.NewRouter, http.NewServer, NewApp, wire.Bind(new(handle.DBPinger), new(*pgxpool.Pool)), wire.Bind(new(handle.JWKSProvider), new(*service.Signer)), wire.Bind(new(http.HealthRoutes), new(*handle.HealthHandler)), wire.Bind(new(http.JWKSRoutes), new(*handle.JWKSHandler)), wire.Bind(new(repo.RefreshTokens), new(*postgres.RefreshTokenRepo)), wire.Bind(new(repo.OneTimeTokens), new(*postgres.OneTimeTokenRepo)), wire.Bind(new(job.Runner), new(*token.Cleaner)))
+var AppSet = wire.NewSet(postgres.NewPool, postgres.NewUserRepo, postgres.NewCredentialRepo, postgres.NewRefreshTokenRepo, postgres.NewOneTimeTokenRepo, ProvideSigner,
+	ProvideTokenConfig,
+	ProvidePasswordConfig,
+	ProvideEmailSender, token.NewService, token.NewCleaner, password.NewService, job.NewCleanup, handle.NewHealthHandler, handle.NewJWKSHandler, handle.NewPasswordHandler, handle.NewSessionHandler, handle.NewMeHandler, http.NewRouter, http.NewServer, NewApp, wire.Bind(new(handle.DBPinger), new(*pgxpool.Pool)), wire.Bind(new(handle.JWKSProvider), new(*service.Signer)), wire.Bind(new(handle.PasswordService), new(*password.Service)), wire.Bind(new(handle.SessionIssuer), new(*token.Service)), wire.Bind(new(handle.SessionService), new(*token.Service)), wire.Bind(new(handle.UserGetter), new(*postgres.UserRepo)), wire.Bind(new(middleware.TokenVerifier), new(*service.Signer)), wire.Bind(new(http.HealthRoutes), new(*handle.HealthHandler)), wire.Bind(new(http.JWKSRoutes), new(*handle.JWKSHandler)), wire.Bind(new(http.PasswordRoutes), new(*handle.PasswordHandler)), wire.Bind(new(http.SessionRoutes), new(*handle.SessionHandler)), wire.Bind(new(http.MeRoutes), new(*handle.MeHandler)), wire.Bind(new(repo.Users), new(*postgres.UserRepo)), wire.Bind(new(repo.PasswordCredentials), new(*postgres.CredentialRepo)), wire.Bind(new(repo.RefreshTokens), new(*postgres.RefreshTokenRepo)), wire.Bind(new(repo.OneTimeTokens), new(*postgres.OneTimeTokenRepo)), wire.Bind(new(job.Runner), new(*token.Cleaner)),
+)

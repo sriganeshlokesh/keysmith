@@ -19,6 +19,8 @@ import (
 	"github.com/sriganeshlokesh/keysmith/adapter/repository/postgres"
 	apihttp "github.com/sriganeshlokesh/keysmith/api/http"
 	"github.com/sriganeshlokesh/keysmith/api/http/handle"
+	"github.com/sriganeshlokesh/keysmith/api/http/middleware"
+	"github.com/sriganeshlokesh/keysmith/application/password"
 	"github.com/sriganeshlokesh/keysmith/application/token"
 	"github.com/sriganeshlokesh/keysmith/config"
 	"github.com/sriganeshlokesh/keysmith/domain/repo"
@@ -29,20 +31,40 @@ import (
 // Consumer-declared interfaces are bound to their implementations here.
 var AppSet = wire.NewSet(
 	postgres.NewPool,
+	postgres.NewUserRepo,
+	postgres.NewCredentialRepo,
 	postgres.NewRefreshTokenRepo,
 	postgres.NewOneTimeTokenRepo,
 	ProvideSigner,
+	ProvideTokenConfig,
+	ProvidePasswordConfig,
+	ProvideEmailSender,
+	token.NewService,
 	token.NewCleaner,
+	password.NewService,
 	job.NewCleanup,
 	handle.NewHealthHandler,
 	handle.NewJWKSHandler,
+	handle.NewPasswordHandler,
+	handle.NewSessionHandler,
+	handle.NewMeHandler,
 	apihttp.NewRouter,
 	apihttp.NewServer,
 	NewApp,
 	wire.Bind(new(handle.DBPinger), new(*pgxpool.Pool)),
 	wire.Bind(new(handle.JWKSProvider), new(*service.Signer)),
+	wire.Bind(new(handle.PasswordService), new(*password.Service)),
+	wire.Bind(new(handle.SessionIssuer), new(*token.Service)),
+	wire.Bind(new(handle.SessionService), new(*token.Service)),
+	wire.Bind(new(handle.UserGetter), new(*postgres.UserRepo)),
+	wire.Bind(new(middleware.TokenVerifier), new(*service.Signer)),
 	wire.Bind(new(apihttp.HealthRoutes), new(*handle.HealthHandler)),
 	wire.Bind(new(apihttp.JWKSRoutes), new(*handle.JWKSHandler)),
+	wire.Bind(new(apihttp.PasswordRoutes), new(*handle.PasswordHandler)),
+	wire.Bind(new(apihttp.SessionRoutes), new(*handle.SessionHandler)),
+	wire.Bind(new(apihttp.MeRoutes), new(*handle.MeHandler)),
+	wire.Bind(new(repo.Users), new(*postgres.UserRepo)),
+	wire.Bind(new(repo.PasswordCredentials), new(*postgres.CredentialRepo)),
 	wire.Bind(new(repo.RefreshTokens), new(*postgres.RefreshTokenRepo)),
 	wire.Bind(new(repo.OneTimeTokens), new(*postgres.OneTimeTokenRepo)),
 	wire.Bind(new(job.Runner), new(*token.Cleaner)),

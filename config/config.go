@@ -42,6 +42,16 @@ type Config struct {
 	// UsingDevSigningKeys is true when the checked-in local dev keypair is in
 	// use; callers should log a warning.
 	UsingDevSigningKeys bool
+
+	// SPAOrigin is the browser origin of the drafted SPA; used for links in
+	// verification/reset emails and, later, CORS (master plan §8).
+	SPAOrigin string
+
+	// ResendAPIKey selects the Resend email adapter when set; local dev falls
+	// back to SMTP (mailpit) at SMTPAddr when it is empty.
+	ResendAPIKey string
+	EmailFrom    string
+	SMTPAddr     string
 }
 
 // SigningKeyConfig is one entry of the AUTH_SIGNING_KEYS JSON array.
@@ -108,6 +118,14 @@ func Load() (*Config, error) {
 		}
 	}
 
+	spaOrigin := getEnv("SPA_ORIGIN", "")
+	if spaOrigin == "" {
+		if env != "local" {
+			return nil, fmt.Errorf("SPA_ORIGIN is required when ENV=%s", env)
+		}
+		spaOrigin = "http://localhost:5173"
+	}
+
 	accessTTL, err := parseDuration("ACCESS_TOKEN_TTL", "15m")
 	if err != nil {
 		return nil, err
@@ -151,6 +169,10 @@ func Load() (*Config, error) {
 		RefreshTokenTTL:     refreshTTL,
 		SigningKeys:         signingKeys,
 		UsingDevSigningKeys: usingDevKeys,
+		SPAOrigin:           spaOrigin,
+		ResendAPIKey:        os.Getenv("RESEND_API_KEY"),
+		EmailFrom:           getEnv("EMAIL_FROM", "Drafted <no-reply@drafted.local>"),
+		SMTPAddr:            getEnv("SMTP_ADDR", "localhost:1025"),
 	}, nil
 }
 

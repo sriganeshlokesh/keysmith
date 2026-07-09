@@ -72,6 +72,7 @@ func TestLoad(t *testing.T) {
 				"DATABASE_URL": validDB, "ENV": "production", "AUTO_MIGRATE": "true",
 				"PUBLIC_BASE_URL":   "https://auth.example.com",
 				"AUTH_SIGNING_KEYS": validKeys,
+				"SPA_ORIGIN":        "https://app.example.com",
 			},
 			check: func(t *testing.T, cfg *Config) {
 				if cfg.AutoMigrate {
@@ -136,6 +137,15 @@ func TestLoad(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "missing SPA_ORIGIN in production",
+			env: map[string]string{
+				"DATABASE_URL": validDB, "ENV": "production",
+				"PUBLIC_BASE_URL":   "https://auth.example.com",
+				"AUTH_SIGNING_KEYS": validKeys,
+			},
+			wantErr: true,
+		},
+		{
 			name:    "malformed AUTH_SIGNING_KEYS",
 			env:     map[string]string{"DATABASE_URL": validDB, "AUTH_SIGNING_KEYS": "not-json"},
 			wantErr: true,
@@ -158,6 +168,7 @@ func TestLoad(t *testing.T) {
 				"ENV", "PORT", "DATABASE_URL", "AUTO_MIGRATE", "SERVICE_NAME", "LOG_LEVEL",
 				"HTTP_READ_TIMEOUT", "HTTP_WRITE_TIMEOUT", "HTTP_IDLE_TIMEOUT", "SHUTDOWN_TIMEOUT",
 				"PUBLIC_BASE_URL", "AUTH_SIGNING_KEYS", "ACCESS_TOKEN_TTL", "REFRESH_TOKEN_TTL",
+				"SPA_ORIGIN", "RESEND_API_KEY", "EMAIL_FROM", "SMTP_ADDR",
 			} {
 				t.Setenv(key, tt.env[key])
 			}
